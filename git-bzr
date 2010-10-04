@@ -367,6 +367,93 @@ def cmd_push(args):
 
   set_cfg('%s.bzr' % branch, bzr_ref)
   set_cfg('%s.upstream' % bzr_ref, upstream)
+  
+def cmd_send(args):
+  parser = optparse.OptionParser(usage='git bzr send --mail-to=EMAIL_ADDRESS <url>')
+  parser.description = ('Effectively a bzr send <url>')
+  parser.add_option('--parent_branch', action='store', dest='parent_branch',
+                    default='master',
+                    help='use this branch as the parent branch')
+  parser.add_option('--mail-to', action='store', dest='mail_to',
+                    default='',
+                    help='E-mail address to send the request to')
+  parser.add_option('-o', action='store', dest='out_file',
+                    default='',
+                    help='Output file to safe the merge directive to')
+  parser.add_option('--output', action='store', dest='out_file',
+                    default='',
+                    help='Output file to safe the merge directive to')
+  (options, args) = parser.parse_args(args)
+
+  cl = Changelist()
+
+  # Ensure our directories exist
+  init_repo(cl)
+
+  upstream = None
+  if len(args):
+    upstream = args[0]
+    
+  output = None
+  if len(options.mail_to):     
+    output = '--mail-to=' + options.mail_to
+  elif len(options.out_file):
+    # Avoid putting the file in REPO/.git/bzr/repo/master
+    if not options.out_file.startswith(('/', '~/', './', '../')):
+      options.out_file = cl.root_dir() + '/' + options.out_file
+      
+    output = '--output=' + options.out_file
+  
+  # We must have some output path specified
+  if not output:
+    die('No mail-to address (--mail-to) or output (-o) specified.')
+
+  # Find the upstream from the tracking branch
+  bzr_ref = get_cfg('%s.bzr' % cl.branch())
+  if not upstream and not bzr_ref:
+    die('This branch has no associated bzr tracking branch')
+
+  if bzr_ref:
+    known_upstream = get_cfg('%s.upstream' % bzr_ref)
+    if not upstream and not known_upstream:
+      die('No upstream found for this bzr tracking branch (%s) ... uh oh.' %
+          bzr_ref)
+  else:
+    known_upstream = None
+
+  if known_upstream and (not upstream or upstream == known_upstream):
+    upstream = known_upstream
+
+    # Sync first
+    cmd_sync([bzr_ref])
+
+    # Check that we are a fast-forward
+    # Using the logic from http://github.com/kfish/git-bzr's implementation
+    revs = git(['rev-list', '--left-right', 'HEAD...%s' % bzr_ref])
+    updates_to_send = False
+    for line in revs:
+      if line.startswith('>'):
+        die('HEAD is not a fast-forward of %s. Merge before sending.', bzr_ref)
+      if not updates_to_send and line.startswith('<'):
+        updates_to_send = True
+    if not updates_to_send:
+      die('Nothing to send. Commit something first')
+
+  branch = cl.branch()
+  bzr_ref = bzr_ref_name(branch)
+  export_git(branch, cl=cl, parent_branch=options.parent_branch)
+
+  root = cl.root_dir()
+  os.chdir(cl.bzr_dir(branch))
+  bzr(['send', output, upstream])
+  os.chdir(root)
+  
+  # if this is out first time, make the tracking branch
+  if not known_upstream:
+    git(['branch', bzr_ref, branch])
+
+  set_cfg('%s.bzr' % branch, bzr_ref)
+  set_cfg('%s.upstream' % bzr_ref, upstream)
 
 
 def cmd_sync(args):
@@ -499,6 +586,7 @@ COMMANDS = [
   ('clone', 'clone a bzr repo', cmd_clone),
   ('clear', 'clear bzr data for a branch', cmd_clear),
   ('push', 'push to a bzr repo', cmd_push),
+  ('send', 'send a merge directive for a bzr repo', cmd_send),
   ('sync', 'sync bzr tracking branch to remote', cmd_sync),
   ('import', 'import a bzr branch as a new git branch', cmd_import),
 ]
