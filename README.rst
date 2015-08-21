@@ -15,20 +15,20 @@ Example usage
 ::
 
   Clone a launchpad repo
-  
+
   $ git bzr clone lp:nova nova
 
   $ cd nova
-  $ git branch -a  
+  $ git branch -a
 
-  # result -> 
+  # result ->
   #   bzr/master
   # * master
-  
+
   Make a new branch
-  
+
   $ git checkout -b touch_branch
-  
+
   $ echo "TOUCH" >> README
   $ git commit -a -m "touch touch"
   $ git bzr push lp:~termie/nova/touch_branch
@@ -36,7 +36,7 @@ Example usage
   Now you've got a cool new branch up on a server!
   Go ahead and do some more work and push again.
   It will go to the same place, and much faster now.
-  
+
   $ echo "TOUCH" >> README
   $ git commit -a -m "touch touch"
   $ git bzr push
@@ -58,7 +58,7 @@ Example usage
   $ git checkout touch_branch
   $ git pull . -- fix-part
   $ git bzr push
-  
+
 
 See test.sh for even more examples. Please try it out and report any issues to
 the github tracker at http://github.com/termie/git-bzr-ng/issues so we can
@@ -74,7 +74,7 @@ to push weird data to your bzr/* branches, you can always force an overwrite
 with:
 
 ::
-  
+
   $ git bzr sync --overwrite bzr/nova
 
 It won't do anything to any branch except the one mentioned and on that one
@@ -86,31 +86,46 @@ Requirements
 ------------
 
 * git (some recentish version)
-* bzr 2.2+ (pip install --upgrade bzr)
-* bzr-fastimport (bzr branch lp:bzr-fastimport)
+* bzr 2.2 or bzr 2.3.0
+* bzr-fastimport 0.10 http://launchpad.net/bzr-fastimport/trunk/0.10.0/+download/bzr-fastimport-0.10.0.tar.gz
+* python-fastimport, for bzr-fastimport (bzr branch lp:python-fastimport)
 * You also need to put the git-bzr script somewhere in your path
 
 
 Troubleshooting
 ---------------
 
-If you get a traceback from bzr about BtreeBuilder and _find_ancestors there
-currently seems to be a bug with either bzr or bzr-fastimport. It is corrected
-very simply by copying the _find_ancestors method from BTreeGraphIndex to
-BTreeBuilder in bzrlib/btree_index.py but I've also uploaded a bzr branch that
-has this patch already applied:
+For other issues, please see: http://github.com/termie/git-bzr-ng/issues
 
-https://code.launchpad.net/~termie/bzr/bzr_btree_ancestors
+------------------
+don't use bzr 2.3b
+------------------
 
-The patch is also available for download at:
+If you see
 
-http://github.com/termie/git-bzr-ng/raw/master/btree_index.patch
+`AttributeError: 'BTreeBuilder' object has no attribute '_find_ancestors'`
+
+it means you have the bzr 2.3 beta installed, git-bzr-ng currently works
+unpatched with bzr 2.2 and bzr 2.3.0. It is possible to patch bzr 2.3b to
+correct the issue, but 2.3.0 is easy to install with pip.
+
+-----------------------------------
+tests run against multiple versions
+-----------------------------------
+
+If you are running the tests (`python run_tests.py`) keep in mind that one
+set of tests is actually running against bzr-fastimport's HEAD so it doesn't
+always work, so if you see failures check that they are in GitBzrTest or
+GitBzrStableTarballTest first.
+
+
+----------------------------------
+when all else fails: git bzr clear
+----------------------------------
 
 Additionally there is a command `git bzr clear` that will wipe out the
 bzr-related information for a given branch so if you have somehow found
 yourself in a bind, it should help you wipe the slate to try again.
-
-For other issues, please see: http://github.com/termie/git-bzr-ng/issues
 
 
 Kind thanks to
